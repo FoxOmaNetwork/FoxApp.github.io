@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мини-приложение для Telegram</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px 20px 20px 20px;
+            background: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #222);
+            transition: background 0.2s, color 0.2s;
+        }
+        h1 {
+            margin-bottom: 10px;
+        }
+        .username {
+            margin-bottom: 20px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        button {
+            padding: 12px 28px;
+            margin: 10px 5px;
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            border-radius: 7px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        button:active {
+            background: #005f99;
+            transform: scale(0.97);
+        }
+        .success {
+            margin-top: 18px;
+            color: green;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Привет, это мини-приложение!</h1>
+    <div class="username" id="username"></div>
+    <p>Здесь может быть ваш контент.</p>
+    <button onclick="sendData()">Отправить данные в бот</button>
+    <button onclick="closeApp()">Закрыть</button>
+    <div class="success" id="successMsg">Данные отправлены!</div>
+    <script>
+        // Адаптация под тему Telegram
+        function applyTheme() {
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.themeParams) {
+                const tp = Telegram.WebApp.themeParams;
+                for (const key in tp) {
+                    document.body.style.setProperty('--tg-theme-' + key.replace(/_/g, '-'), tp[key]);
+                }
+            }
+        }
+        applyTheme();
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.onEvent('themeChanged', applyTheme);
+        }
+
+        // Отображение имени пользователя, если доступно
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+            const user = Telegram.WebApp.initDataUnsafe.user;
+            document.getElementById('username').textContent = `Пользователь: ${user.first_name || ''} ${user.last_name || ''}`.trim();
+        }
+
+        function sendData() {
+            const data = { action: "hello", text: "Привет из сайта!" };
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.sendData(JSON.stringify(data));
+                document.getElementById('successMsg').style.display = 'block';
+                setTimeout(() => {
+                    Telegram.WebApp.close();
+                }, 900);
+            } else {
+                alert('Telegram WebApp API недоступен!');
+            }
+        }
+
+        function closeApp() {
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.close();
+            } else {
+                window.close();
+            }
+        }
+    </script>
+</body>
+</html>
