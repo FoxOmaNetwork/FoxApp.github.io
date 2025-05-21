@@ -1,97 +1,243 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Мини-приложение для Telegram</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 40px 20px 20px 20px;
-            background: var(--tg-theme-bg-color, #f5f5f5);
-            color: var(--tg-theme-text-color, #222);
-            transition: background 0.2s, color 0.2s;
-        }
-        h1 {
-            margin-bottom: 10px;
-        }
-        .username {
-            margin-bottom: 20px;
-            color: var(--tg-theme-hint-color, #888);
-        }
-        button {
-            padding: 12px 28px;
-            margin: 10px 5px;
-            background: var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-text-color, #fff);
-            border: none;
-            border-radius: 7px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background 0.15s, transform 0.1s;
-        }
-        button:active {
-            background: #005f99;
-            transform: scale(0.97);
-        }
-        .success {
-            margin-top: 18px;
-            color: green;
-            font-weight: bold;
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>DND Dice Roller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      background: #222;
+      color: #eee;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      text-align: center;
+      padding: 30px 10px;
+    }
+    h1 {
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 2px 8px #000;
+    }
+    .dice-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-bottom: 25px;
+    }
+    .dice {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+      margin: 0 3px;
+    }
+    .dice svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 5px;
+    }
+    .dice-label {
+      margin-top: 3px;
+      font-size: 1em;
+      color: #ccc;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    .dice-ctrl {
+      background: #333;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 1em;
+      margin: 0 2px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .dice-ctrl.selected {
+      background: #0088cc;
+      border-color: #0088cc;
+      color: #fff;
+    }
+    .bonus-block {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .bonus-input {
+      width: 60px;
+      text-align: center;
+      font-size: 1.2em;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #222;
+      color: #fff;
+      padding: 4px;
+    }
+    .btn {
+      padding: 10px 30px;
+      margin: 0 7px;
+      font-size: 1.1em;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      background: #444;
+      color: #fff;
+      transition: background 0.15s;
+    }
+    .btn.roll {
+      background: #0088cc;
+    }
+    .btn.roll:hover {
+      background: #005f99;
+    }
+    .btn.clear {
+      background: #333;
+    }
+    .result {
+      margin-top: 28px;
+      font-size: 2em;
+      color: #ffd700;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+    @media (max-width: 600px) {
+      .dice-row { flex-wrap: wrap; }
+      .controls { flex-wrap: wrap; }
+    }
+  </style>
 </head>
 <body>
-    <h1>Привет, это мини-приложение!</h1>
-    <div class="username" id="username"></div>
-    <p>Здесь может быть ваш контент.</p>
-    <button onclick="sendData()">Отправить данные в бот</button>
-    <button onclick="closeApp()">Закрыть</button>
-    <div class="success" id="successMsg">Данные отправлены!</div>
-    <script>
-        // Адаптация под тему Telegram
-        function applyTheme() {
-            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.themeParams) {
-                const tp = Telegram.WebApp.themeParams;
-                for (const key in tp) {
-                    document.body.style.setProperty('--tg-theme-' + key.replace(/_/g, '-'), tp[key]);
-                }
-            }
+  <h1>DND Dice Roller</h1>
+  <div class="dice-row" id="diceRow"></div>
+  <div class="controls" id="controls"></div>
+  <div class="bonus-block">
+    <span>Бонус:</span>
+    <input type="number" id="bonusInput" class="bonus-input" value="0">
+  </div>
+  <button class="btn roll" onclick="rollAll()">🎲 Roll!</button>
+  <button class="btn clear" onclick="clearSelection()">Clear</button>
+  <div class="result" id="result"></div>
+  <script>
+    // Описание кубиков
+    const diceTypes = [
+      {sides: 4,  color: "#b97aff"},
+      {sides: 6,  color: "#ff9900"},
+      {sides: 8,  color: "#fff7a0"},
+      {sides: 10, color: "#ffd700"},
+      {sides: 12, color: "#7abaff"},
+      {sides: 20, color: "#ff3333"},
+      {sides: 100,color: "#33ff99"}
+    ];
+    // Состояние выбранных кубиков
+    let selectedDice = {};
+    // Иконки кубиков (SVG)
+    const diceSVG = [
+      // d4
+      `<svg viewBox="0 0 50 50"><polygon points="25,5 45,45 5,45" fill="#b97aff" stroke="#fff" stroke-width="2"/></svg>`,
+      // d6
+      `<svg viewBox="0 0 50 50"><rect x="8" y="8" width="34" height="34" rx="7" fill="#ff9900" stroke="#fff" stroke-width="2"/></svg>`,
+      // d8
+      `<svg viewBox="0 0 50 50"><polygon points="25,5 45,25 25,45 5,25" fill="#fff7a0" stroke="#fff" stroke-width="2"/></svg>`,
+      // d10
+      `<svg viewBox="0 0 50 50"><polygon points="25,5 45,20 40,45 10,45 5,20" fill="#ffd700" stroke="#fff" stroke-width="2"/></svg>`,
+      // d12
+      `<svg viewBox="0 0 50 50"><polygon points="25,5 45,17 45,33 25,45 5,33 5,17" fill="#7abaff" stroke="#fff" stroke-width="2"/></svg>`,
+      // d20
+      `<svg viewBox="0 0 50 50"><polygon points="25,5 45,20 40,45 10,45 5,20" fill="#ff3333" stroke="#fff" stroke-width="2"/></svg>`,
+      // d100
+      `<svg viewBox="0 0 50 50"><ellipse cx="25" cy="25" rx="21" ry="21" fill="#33ff99" stroke="#fff" stroke-width="2"/></svg>`
+    ];
+    // Рендер кубиков
+    function renderDice() {
+      const diceRow = document.getElementById('diceRow');
+      diceRow.innerHTML = '';
+      diceTypes.forEach((dice, i) => {
+        const diceDiv = document.createElement('div');
+        diceDiv.className = 'dice';
+        diceDiv.innerHTML = diceSVG[i] + `<div class="dice-label">d${dice.sides}</div>`;
+        diceDiv.onclick = () => selectDice(dice.sides);
+        diceRow.appendChild(diceDiv);
+      });
+      renderControls();
+    }
+    // Рендер контролов выбора количества
+    function renderControls() {
+      const controls = document.getElementById('controls');
+      controls.innerHTML = '';
+      Object.keys(selectedDice).forEach(sides => {
+        const val = selectedDice[sides];
+        const diceIdx = diceTypes.findIndex(d => d.sides == sides);
+        const btn = document.createElement('button');
+        btn.className = 'dice-ctrl selected';
+        btn.style.borderColor = diceTypes[diceIdx].color;
+        btn.innerHTML = `1d${sides} <span style="font-size:1.2em;cursor:pointer;" onclick="addDice(event,${sides},1)">+</span> <span style="margin:0 7px;">${val}</span> <span style="font-size:1.2em;cursor:pointer;" onclick="addDice(event,${sides},-1)">-</span> <span style="font-size:1.2em;cursor:pointer;" onclick="removeDice(event,${sides})">&times;</span>`;
+        controls.appendChild(btn);
+      });
+    }
+    // Выбрать кубик
+    function selectDice(sides) {
+      if (!selectedDice[sides]) selectedDice[sides] = 1;
+      else selectedDice[sides]++;
+      renderControls();
+    }
+    // Добавить/убрать количество кубиков
+    function addDice(e, sides, delta) {
+      e.stopPropagation();
+      selectedDice[sides] = Math.max(1, (selectedDice[sides] || 1) + delta);
+      renderControls();
+    }
+    // Удалить кубик из выбора
+    function removeDice(e, sides) {
+      e.stopPropagation();
+      delete selectedDice[sides];
+      renderControls();
+    }
+    // Очистить выбор
+    function clearSelection() {
+      selectedDice = {};
+      renderControls();
+      document.getElementById('result').textContent = '';
+      document.getElementById('bonusInput').value = 0;
+    }
+    // Бросить все выбранные кубики
+    function rollAll() {
+      let resultStr = '';
+      let total = 0;
+      Object.keys(selectedDice).forEach(sides => {
+        const count = selectedDice[sides];
+        let rolls = [];
+        for (let i = 0; i < count; i++) {
+          const roll = Math.floor(Math.random() * sides) + 1;
+          rolls.push(roll);
+          total += roll;
         }
-        applyTheme();
-        if (window.Telegram && Telegram.WebApp) {
-            Telegram.WebApp.onEvent('themeChanged', applyTheme);
-        }
-
-        // Отображение имени пользователя, если доступно
-        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
-            const user = Telegram.WebApp.initDataUnsafe.user;
-            document.getElementById('username').textContent = `Пользователь: ${user.first_name || ''} ${user.last_name || ''}`.trim();
-        }
-
-        function sendData() {
-            const data = { action: "hello", text: "Привет из сайта!" };
-            if (window.Telegram && Telegram.WebApp) {
-                Telegram.WebApp.sendData(JSON.stringify(data));
-                document.getElementById('successMsg').style.display = 'block';
-                setTimeout(() => {
-                    Telegram.WebApp.close();
-                }, 900);
-            } else {
-                alert('Telegram WebApp API недоступен!');
-            }
-        }
-
-        function closeApp() {
-            if (window.Telegram && Telegram.WebApp) {
-                Telegram.WebApp.close();
-            } else {
-                window.close();
-            }
-        }
-    </script>
+        resultStr += `${count}d${sides}: [${rolls.join(', ')}]\n`;
+      });
+      // Бонус
+      const bonus = parseInt(document.getElementById('bonusInput').value) || 0;
+      if (bonus) {
+        total += bonus;
+        resultStr += `Бонус: ${bonus > 0 ? '+' : ''}${bonus}\n`;
+      }
+      resultStr += `\nИтого: ${total}`;
+      document.getElementById('result').textContent = resultStr;
+      // Отправить результат в Telegram WebApp (если нужно)
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.sendData) {
+        Telegram.WebApp.sendData(JSON.stringify({action: "roll", result: resultStr, total}));
+      }
+    }
+    renderDice();
+  </script>
 </body>
 </html>
